@@ -32,13 +32,18 @@
     <link rel="apple-touch-icon" sizes="152x152" href="https://cdn-icons-png.flaticon.com/512/619/619153.png">
     <link rel="apple-touch-icon" sizes="180x180" href="https://cdn-icons-png.flaticon.com/512/619/619153.png">
     <link rel="apple-touch-icon" sizes="167x167" href="https://cdn-icons-png.flaticon.com/512/619/619153.png">
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('Error capturado por window.onerror:', message, 'en', source, 'linea', lineno);
+            showToast('Error JS: ' + message + ' en linea ' + lineno, 'error');
+            return false;
+        };
+    </script>
 </head>
 <body>
-    <script>
-        window.addEventListener('error', function(event) {
-            alert('Error JS: ' + event.message + ' en linea ' + event.lineno);
-        });
-    </script>
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
     <div class="app-layout">
         <!-- Overlay del Menú Móvil -->
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
@@ -187,7 +192,7 @@ const SUPABASE_URL = 'https://wlhkksvxbkolquhrdqlk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndsaGtrc3Z4YmtvbHF1aHJkcWxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzY2NjUsImV4cCI6MjA5MTExMjY2NX0.eQAom69NifoFNaaXpFT1fvNqCDq24xTdulukhA9umMs';
 
 const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-if (!supabase) alert("Supabase JS no cargó correctamente desde internet.");
+if (!supabase) showToast("Supabase JS no cargó correctamente desde internet.", "error");
 
 // ==========================================
 // 3. SERVICIOS (Llamadas a Base de Datos)
@@ -343,8 +348,15 @@ function ReservasView() {
             container.innerHTML = '<div style="text-align:center; padding: 24px; color: var(--text-secondary);">Cargando reservas...</div>';
             try {
                 const reservas = await getReservas();
+                
+                // Limpiar search al recargar si se desea, o volver a filtrar (lo haremos más dinámico)
+                
                 if(reservas.length === 0) {
-                    container.innerHTML = '<div style="text-align:center; padding: 24px; color: var(--text-secondary);">No hay reservas registradas.</div>';
+                    container.innerHTML = `<div class='empty-state'>
+                        <i class='ph ph-calendar-blank'></i>
+                        <h3>Sin reservas registradas</h3>
+                        <p>Aún no hay clientes agendados. ¡Regístralos usando el botón Nueva Reserva!</p>
+                    </div>`;
                     return;
                 }
                 
@@ -370,10 +382,11 @@ function ReservasView() {
                     const saldo = calcSaldo(res.precio_total, res.anticipo);
                     const bc = res.estado === 'confirmado' ? 'success' : res.estado === 'pendiente' ? 'warning' : 'danger';
                     const telHtml = res.telefono_cliente ? `<div class='dense-subtext'><i class='ph ph-phone'></i> ${res.telefono_cliente}</div>` : "";
-                    const saldoColor = saldo > 0 ? "color:var(--danger);" : "color:var(--text-secondary);";
+                    const saldoColor = saldo > 0 ? "color:var(--danger);" : "color:var(--success);";
+                    const searchDataStr = (res.nombre_cliente + " " + res.estado).toLowerCase();
                     
                     if(currentViewMode === 'list') {
-                        htmlStr += `<div class='dense-row'>
+                        htmlStr += `<div class='dense-row reserva-item-render' data-search='${searchDataStr}'>
                             <div class='d-col-info'>
                                 <span class='dense-user-name'>${res.nombre_cliente}</span>
                                 ${telHtml}
@@ -389,7 +402,7 @@ function ReservasView() {
                             <div class='d-col-acciones' style='text-align:center;'><button class='icon-btn' style='background:var(--bg-main)'><i class='ph ph-caret-right'></i></button></div>
                         </div>`;
                     } else {
-                        htmlStr += "<div class='crm-card'>" +
+                        htmlStr += "<div class='crm-card reserva-item-render' data-search='" + searchDataStr + "'>" +
                             "<div class='crm-card-header'>" +
                                 "<div>" +
                                     "<div class='crm-card-title'>" + res.nombre_cliente + "</div>" +
@@ -433,13 +446,35 @@ function ReservasView() {
                 } else {
                     htmlStr += "</div>"; // Cerrar modern-list-container
                 }
+                // Inject for dynamic empty search states
+                htmlStr += `<div id="res-search-empty" class="empty-state" style="display:none;">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <h3>No se encontraron resultados</h3>
+                    <p>Intenta con otro término de búsqueda.</p>
+                </div>`;
                 
                 container.innerHTML = htmlStr;
+                
+                // Re-ejecutar Filtro si el input ya tenía texto
+                const srcInput = document.getElementById('search-reservas');
+                if(srcInput && srcInput.value.trim().length > 0) resSearchExecute(srcInput.value.trim());
+
             } catch (error) { 
                 container.innerHTML = '<div style="text-align:center; padding: 24px; color:red">Error al cargar listado: ' + error.message + '</div>'; 
             }
         }
-        // Función de Exportación Reservas
+        function resSearchExecute(val) {
+            const items = document.querySelectorAll('.reserva-item-render');
+            let found = 0;
+            const term = val.toLowerCase();
+            items.forEach(el => {
+                if (el.getAttribute('data-search').includes(term)) { el.style.display = currentViewMode === 'list' ? 'flex' : 'block'; found++; }
+                else { el.style.display = 'none'; }
+            });
+            const emSt = document.getElementById('res-search-empty');
+            if(emSt) emSt.style.display = found === 0 ? 'flex' : 'none';
+        }
+
         const btnExportRes = document.getElementById('export-reservas-res');
         if(btnExportRes) {
             btnExportRes.addEventListener('click', async () => {
@@ -485,63 +520,74 @@ function ReservasView() {
 
                 try {
                     await createReserva(data);
-                    alert("Reserva creada con éxito en Supabase!");
+                    showToast("Reserva creada con éxito en Supabase!", "success");
                     formNueva.reset();
                     document.querySelector(".tab-btn[data-target='tab-lista']").click();
                     loadReservas();
-                } catch (error) { alert('Error al crear reserva: ' + error.message); } finally { btnSubmit.innerHTML = originalText; btnSubmit.disabled = false; }
+                } catch (error) { showToast('Error al crear reserva: ' + error.message, "error"); } finally { btnSubmit.innerHTML = originalText; btnSubmit.disabled = false; }
             });
         }
     }, 50);
 
-    return "<style>" +
-           " .tabs-header { display: flex; gap: 16px; border-bottom: 2px solid var(--border-color); margin-bottom: 24px; }" +
-           " .tab-btn { padding: 12px 16px; font-weight: 600; color: var(--text-secondary); position: relative; }" +
-           " .tab-btn:hover, .tab-btn.active { color: var(--primary); }" +
-           " .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background-color: var(--primary); }" +
-           " .tab-content { display: none; } .tab-content.active-content { display: block; }" +
-           " .filter-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }" +
-           " .view-toggler { display: flex; gap: 4px; background: var(--bg-main); padding: 4px; border-radius: var(--border-radius); border: 1px solid var(--border-color); }" +
-           " .active-view { background-color: var(--bg-surface); color: var(--primary) !important; box-shadow: 0 1px 2px rgba(0,0,0,0.1); border-radius: 4px; }" +
-           " .input-group { display: flex; flex-direction: column; gap: 4px; }" +
-           " .input-group input, .input-group select, .input-group textarea { padding: 10px; border: 1px solid var(--border-color); border-radius: var(--border-radius); background-color: var(--bg-main); font-family: inherit; }" +
-           "</style>" +
-           "<div class='card'>" +
-           "  <div class='tabs-header'>" +
-           "    <button class='tab-btn active' data-target='tab-lista'>Lista de Reservas</button>" +
-           "    <button class='tab-btn' data-target='tab-nueva'>Nueva Reserva</button>" +
-           "  </div>" +
-           "  <div id='tab-lista' class='tab-content active-content'>" +
-           "    <div class='filter-bar' style='display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:12px; border-bottom:1px solid var(--border-color);'>" +
-           "        <div style='display:flex; gap: 8px;'>" +
-           "            <button id='export-reservas-res' class='btn' style='background:#10B981; color:white; font-size:0.9rem; font-weight:600;'><i class='ph ph-file-csv' style='font-size:1.2rem'></i> <span class='hidden-mobile'>Descargar CSV</span></button>" +
-           "            <button class='btn' style='background:#F3F4F6; color:var(--text-primary); font-size:0.9rem;' onclick=\"document.querySelector('.tab-btn[data-target=\\'tab-nueva\\']').click()\"><i class='ph ph-plus' style='font-size:1.2rem'></i> <span class='hidden-mobile'>Reservar</span></button>" +
-           "        </div>" +
-           "        <div class='view-toggler' style='display:flex; gap: 4px; background: var(--bg-surface); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);'><button id='toggle-list-res' class='icon-btn' aria-label='Lista'><i class='ph ph-list-dashes'></i></button><button id='toggle-card-res' class='icon-btn' aria-label='Tarjetas'><i class='ph ph-squares-four'></i></button></div>" +
-           "    </div>" +
-           "    <div id='reservas-view-container'></div>" +
-           "  </div>" +
-           "  <div id='tab-nueva' class='tab-content'>" +
-           "    <h3 style='margin-bottom: 24px;'>Crear Nueva Reserva</h3>" +
-           "    <form id='form-nueva-reserva'>" +
-           "      <div class='input-group' style='margin-bottom: 16px;'><label>Nombre Completo del Huésped</label><input type='text' name='nombre' required placeholder='Ej. Juan Pérez'></div>" +
-           "      <div class='input-group' style='margin-bottom: 16px;'><label>Teléfono / WhatsApp</label><input type='text' name='telefono' required placeholder='+57 XXXXXXXX'></div>" +
-           "      <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;'>" +
-           "        <div class='input-group'><label>Entrada (Check-in)</label><input type='date' name='fecha_in' required></div>" +
-           "        <div class='input-group'><label>Salida (Check-out)</label><input type='date' name='fecha_out' required></div>" +
-           "      </div>" +
-           "      <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;'>" +
-           "        <div class='input-group'><label>Personas (Pax)</label><input type='number' name='personas' value='2' required min='1'></div>" +
-           "        <div class='input-group'><label>Origen</label><select name='origen'><option>Directo</option><option>Booking</option><option>Airbnb</option></select></div>" +
-           "      </div>" +
-           "      <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 32px; padding: 16px; background: var(--bg-main); border-radius: 8px; border: 1px dashed var(--border-color);'>" +
-           "        <div class='input-group'><label>Precio Total (COP)</label><input type='number' name='precio' required placeholder='0'></div>" +
-           "        <div class='input-group'><label>Anticipo (COP)</label><input type='number' name='anticipo' value='0' required></div>" +
-           "      </div>" +
-           "      <button type='submit' class='btn btn-primary' style='width:100%; padding: 14px; font-size: 1.1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(16,185,129,0.3);'>Guardar Reserva</button>" +
-           "    </form>" +
-           "  </div>" +
-           "</div>";
+    return `
+        <style>
+            .tabs-header { display: flex; gap: 16px; border-bottom: 2px solid var(--border-color); margin-bottom: 24px; }
+            .tab-btn { padding: 12px 16px; font-weight: 600; color: var(--text-secondary); position: relative; }
+            .tab-btn:hover, .tab-btn.active { color: var(--primary); }
+            .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background-color: var(--primary); }
+            .tab-content { display: none; } .tab-content.active-content { display: block; }
+            .filter-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+            .view-toggler { display: flex; gap: 4px; background: var(--bg-main); padding: 4px; border-radius: var(--border-radius); border: 1px solid var(--border-color); }
+            .active-view { background-color: var(--bg-surface); color: var(--primary) !important; box-shadow: 0 1px 2px rgba(0,0,0,0.1); border-radius: 4px; }
+        </style>
+        <div class="header-actions">
+            <h1>Reservas</h1>
+        </div>
+        <div class="tabs-container">
+          <div class="tabs-header">
+            <button class="tab-btn active" data-target="tab-lista">Lista de Reservas</button>
+            <button class="tab-btn" data-target="tab-nueva">Nueva Reserva</button>
+          </div>
+          <div id="tab-lista" class="tab-content active-content">
+            <div class="filter-bar" style="display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+                <div class="search-input-group" style="flex:1; min-width:260px;">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" id="search-reservas" placeholder="Buscar por huésped o estado..." oninput="resSearchExecute(this.value)">
+                </div>
+                <div style="display:flex; gap: 8px; flex-wrap:wrap;">
+                    <button id='export-reservas-res' class='btn' style='background:#10B981; color:white; font-size:0.9rem; font-weight:600;'><i class='ph ph-file-csv' style='font-size:1.2rem'></i> <span class='hidden-mobile'>Descargar CSV</span></button>
+                    <button class='btn' style='background:#F3F4F6; color:var(--text-primary); font-size:0.9rem;' onclick="document.querySelector('.tab-btn[data-target=\\'tab-nueva\\']').click()"><i class='ph ph-plus' style='font-size:1.2rem'></i> <span class='hidden-mobile'>Reservar</span></button>
+                    <div class='view-toggler' style='display:flex; gap: 4px; background: var(--bg-surface); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);'><button id='toggle-list-res' class='icon-btn' aria-label='Lista'><i class='ph ph-list-dashes'></i></button><button id='toggle-card-res' class='icon-btn' aria-label='Tarjetas'><i class='ph ph-squares-four'></i></button></div>
+                </div>
+            </div>
+            <div id='reservas-view-container'></div>
+          </div>
+          <div id='tab-nueva' class='tab-content'>
+            <h3 style='margin-bottom: 24px;'>Crear Nueva Reserva</h3>
+            <form id='form-nueva-reserva'>
+              <div class='input-group' style='margin-bottom: 16px;'><label>Nombre Completo del Huésped</label><input type='text' name='nombre' required placeholder='Ej. Juan Pérez'></div>
+              <div class='input-group' style='margin-bottom: 16px;'><label>Teléfono / WhatsApp</label><input type='text' name='telefono' required placeholder='+57 XXXXXXXX'></div>
+              <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;'>
+                <div class='input-group'><label>Entrada (Check-in)</label><input type='date' name='fecha_in' required></div>
+                <div class='input-group'><label>Salida (Check-out)</label><input type='date' name='fecha_out' required></div>
+              </div>
+              <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;'>
+                <div class='input-group'><label>Personas (Pax)</label><input type='number' name='personas' value='2' required min='1'></div>
+                <div class='input-group'><label>Origen</label><select name='origen'><option>Directo</option><option>Booking</option><option>Airbnb</option></select></div>
+              </div>
+              <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; padding: 16px; background: var(--bg-main); border-radius: 8px; border: 1px dashed var(--border-color);'>
+                <div class='input-group'><label>Precio Total (COP)</label><input type='number' name='precio' required placeholder='0'></div>
+                <div class='input-group'><label>Anticipo Pagado (COP)</label><input type='number' name='anticipo' value='0' required></div>
+              </div>
+              <div class='live-calc-box'>
+                <div><label style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Saldo Pendiente (en vivo)</label></div>
+                <div id='live-calc-display' style="font-size:1.5rem; font-weight:800;">$ 0</div>
+              </div>
+              <button type='submit' class='btn btn-primary' style='width:100%; padding: 14px; font-size: 1.1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(16,185,129,0.3);'>Guardar Reserva</button>
+            </form>
+          </div>
+        </div>
+    `;
 }
 
 function CalendarioView() {
@@ -718,10 +764,10 @@ function IngresosView() {
 
                 try {
                     await createTransaccion(data);
-                    alert("Ingreso registrado en Supabase.");
+                    showToast("Ingreso registrado en Supabase.", "success");
                     formNuevo.reset();
                     loadIngresos();
-                } catch (error) { alert(`Error al registrar el ingreso: ${error.message}`); } 
+                } catch (error) { showToast(`Error al registrar el ingreso: ${error.message}`, "error"); } 
                 finally { btnSubmit.innerHTML = originalText; btnSubmit.disabled = false; }
             });
         }
@@ -861,10 +907,10 @@ function GastosView() {
 
                 try {
                     await createTransaccion(data);
-                    alert("Gasto registrado en Supabase.");
+                    showToast("Gasto registrado en Supabase.", "success");
                     formNuevo.reset();
                     loadGastos();
-                } catch (error) { alert(`Error al registrar el gasto: ${error.message}`); } 
+                } catch (error) { showToast(`Error al registrar el gasto: ${error.message}`, "error"); } 
                 finally { btnSubmit.innerHTML = originalText; btnSubmit.disabled = false; }
             });
         }
@@ -1001,6 +1047,53 @@ document.addEventListener('DOMContentLoaded', function() {
             navigator.serviceWorker.register('./sw.js')
                 .then(reg => console.log('✅ PWA: Service Worker Activado', reg))
                 .catch(err => console.log('❌ PWA: Error al activar Service Worker', err));
+        });
+    }
+});
+
+// Funciones Globales Adicionales de Utilidad y UX
+
+// 1. Toast Notification System
+window.showToast = function(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if(!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    let icon = 'ph-check-circle';
+    if(type === 'error') icon = 'ph-x-circle';
+    if(type === 'warning') icon = 'ph-warning';
+    
+    toast.innerHTML = `<i class='ph ${icon}' style='font-size:1.5rem;'></i> <span>${message}</span>`;
+    
+    container.appendChild(toast);
+    
+    // Animación de entrada
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Animación de salida y remoción
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300); // 300ms debe concordar con la transición CSS
+    }, 3500);
+};
+
+// Descarga PWA Manual
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const insBtn = document.getElementById('btn-install');
+    if (insBtn) {
+        insBtn.style.display = 'block';
+        insBtn.addEventListener('click', async () => {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                insBtn.style.display = 'none';
+            }
+            deferredPrompt = null;
         });
     }
 });
