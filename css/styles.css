@@ -626,62 +626,79 @@ tbody tr:hover {
         right: 24px;
     }
 
-    /* 8. Premium Mobile Tile (Airbnb Style) para Dense Row */
+    /* 8. True Mobile List View (CRM Standard) para Dense Row */
     .hidden-mobile { display: none !important; }
     .mobile-only { display: block !important; }
     
+    .dense-list-body {
+        background: #FFFFFF;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
     .dense-row {
         display: flex;
         flex-direction: column;
-        padding: 16px;
-        margin-bottom: 12px;
+        padding: 12px 14px;
+        margin-bottom: 0;
         background: #FFFFFF;
-        border: 1px solid #E5E7EB;
-        border-radius: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        gap: 0;
+        border: none;
+        border-bottom: 1px solid var(--border-color);
+        border-radius: 0;
+        box-shadow: none;
+        position: relative;
     }
+    .dense-row:last-child { border-bottom: none; }
     
     .d-col-info {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 12px;
+        align-items: center;
         width: 100%;
+        margin-bottom: 4px;
     }
-    .d-name-box { display:flex; flex-direction:column; gap:4px; }
-    .dense-user-name { font-size: 1.15rem; line-height:1.2; }
+    
+    .d-name-box { 
+        display: flex; 
+        flex-direction: row; 
+        align-items: center; 
+        gap: 8px; 
+    }
+    .dense-user-name { font-size: 0.95rem; line-height: 1; }
+    .dense-subtext { font-size: 0.75rem; color: var(--text-secondary); margin-top:0 !important; }
+    
+    .dense-badge { padding: 2px 8px; font-size: 0.65rem; border-radius: 4px; }
     
     .d-col-fechas {
-        background: #F9FAFB;
-        padding: 12px;
-        border-radius: 8px;
-        margin-bottom: 12px;
+        background: transparent;
+        padding: 0;
+        margin-bottom: 0;
         display: flex;
-        flex-direction: column;
-        gap: 4px;
-        font-size: 0.85rem;
+        flex-direction: row;
+        gap: 12px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        width: 70%;
     }
     
     .d-col-personas { display: none; }
     
     .d-col-saldos {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-top: 12px;
-        border-top: 1px solid #E5E7EB;
-        width: 100%;
+        position: absolute;
+        bottom: 12px;
+        right: 14px;
+        padding: 0;
+        border: none;
+        width: auto;
     }
     
-    .d-saldo-meta { display: flex; flex-direction: column; gap:2px; }
-    .d-saldo-meta .d-total-val { font-size: 0.9rem; color: var(--text-secondary); text-decoration: line-through; }
+    .d-saldo-meta { display: none !important; } /* Ocultar total en móvil para mantener la lista ultra densa */
+    .d-saldo-main { display: flex; flex-direction: row; align-items: center; }
+    .d-saldo-label { display: none !important; }
+    .d-saldo-val { font-size: 0.95rem; font-weight: 700; text-align: right; }
     
-    .d-saldo-main { display: flex; flex-direction: column; align-items: flex-end; gap:2px; }
-    .d-saldo-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing:0.5px; }
-    .d-saldo-val { font-size: 1.15rem; font-weight: 800; }
-    
-    .text-muted { color: var(--text-muted); font-weight: 600; display:inline-block; width: 35px;}
+    .text-muted { display: none; }
 }
 
 /* Ocultar botón de menú en Desktop */
