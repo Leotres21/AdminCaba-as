@@ -288,7 +288,7 @@ function ReservasView() {
             try {
                 const reservas = await getReservas();
                 if(reservas.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center">No hay reservas registradas.</td></tr>';
+                    tableBody.innerHTML = '<div style="text-align:center; padding: 24px; color: var(--text-secondary);">No hay reservas registradas.</div>';
                     return;
                 }
                 
@@ -299,13 +299,42 @@ function ReservasView() {
                     const telHtml = res.telefono_cliente ? "<div style='font-size:0.8rem; color:var(--text-secondary)'>" + res.telefono_cliente + "</div>" : "";
                     const saldoColor = saldo > 0 ? "color:var(--danger); font-weight:600" : "color:var(--text-secondary)";
                     
-                    htmlStr += "<tr>" +
-                        "<td data-label='Huésped'><div style='font-weight:600'>" + res.nombre_cliente + "</div>" + telHtml + "</td>" +
-                        "<td data-label='Fechas'><div>In: " + formatDate(res.fecha_entrada) + "</div><div style='font-size:0.8rem; color:var(--text-secondary)'>Out: " + formatDate(res.fecha_salida) + "</div></td>" +
-                        "<td data-label='Personas'>" + res.numero_personas + "</td><td data-label='Estado'><span class='badge " + bc + "'>" + res.estado + "</span></td>" +
-                        "<td data-label='Total'>" + formatCOP(res.precio_total) + "</td><td data-label='Saldo'><span style='" + saldoColor + "'>" + formatCOP(saldo) + "</span></td>" +
-                        "<td><button class='icon-btn'><i class='ph ph-eye'></i></button></td>" +
-                    "</tr>";
+                    htmlStr += "<div class='crm-card'>" +
+                        "<div class='crm-card-header'>" +
+                            "<div>" +
+                                "<div class='crm-card-title'>" + res.nombre_cliente + "</div>" +
+                                (res.telefono_cliente ? "<div class='crm-card-subtitle'><i class='ph ph-phone'></i> " + res.telefono_cliente + "</div>" : "") +
+                            "</div>" +
+                            "<span class='badge " + bc + "'>" + res.estado + "</span>" +
+                        "</div>" +
+                        "<div class='crm-card-body'>" +
+                            "<div class='crm-detail-item'>" +
+                                "<div class='crm-detail-label'>Entrada</div>" +
+                                "<div class='crm-detail-value'>" + formatDate(res.fecha_entrada) + "</div>" +
+                            "</div>" +
+                            "<div class='crm-detail-item'>" +
+                                "<div class='crm-detail-label'>Salida</div>" +
+                                "<div class='crm-detail-value'>" + formatDate(res.fecha_salida) + "</div>" +
+                            "</div>" +
+                            "<div class='crm-detail-item'>" +
+                                "<div class='crm-detail-label'>Personas</div>" +
+                                "<div class='crm-detail-value'>" + res.numero_personas + " pax</div>" +
+                            "</div>" +
+                        "</div>" +
+                        "<div class='crm-card-footer'>" +
+                            "<div class='crm-financials'>" +
+                                "<div class='crm-detail-item'>" +
+                                    "<div class='crm-detail-label'>Total</div>" +
+                                    "<div class='crm-detail-value'>" + formatCOP(res.precio_total) + "</div>" +
+                                "</div>" +
+                                "<div class='crm-detail-item'>" +
+                                    "<div class='crm-detail-label'>Saldo</div>" +
+                                    "<div class='crm-detail-value' style='" + saldoColor + "'>" + formatCOP(saldo) + "</div>" +
+                                "</div>" +
+                            "</div>" +
+                            "<button class='icon-btn' aria-label='Ver Detalles'><i class='ph ph-eye'></i></button>" +
+                        "</div>" +
+                    "</div>";
                 });
                 tableBody.innerHTML = htmlStr;
             } catch (error) { 
@@ -357,8 +386,7 @@ function ReservasView() {
            "  </div>" +
            "  <div id='tab-lista' class='tab-content active-content'>" +
            "    <div class='filter-bar'><button class='btn btn-primary' onclick=\"document.querySelector('.tab-btn[data-target=\\'tab-nueva\\']').click()\"><i class='ph ph-plus'></i> Nueva Reserva</button></div>" +
-           "    <div class='table-container'><table><thead><tr><th>Nombre Cliente</th><th>Fechas</th><th># Personas</th><th>Estado</th><th>Total</th><th>Saldo</th><th>Acción</th></tr></thead>" +
-           "    <tbody id='reservas-tbody'></tbody></table></div>" +
+           "    <div id='reservas-tbody' class='modern-list-container'></div>" +
            "  </div>" +
            "  <div id='tab-nueva' class='tab-content'>" +
            "    <h3>Crear Nueva Reserva</h3>" +
@@ -390,20 +418,32 @@ function IngresosView() {
                 let total = 0;
                 
                 if(transacciones.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center">No hay ingresos registrados.</td></tr>`;
+                    tableBody.innerHTML = `<div style="text-align:center; padding: 24px; color: var(--text-secondary);">No hay ingresos registrados.</div>`;
                     document.getElementById('ingresos-total-kpi').textContent = '$0';
                     return;
                 }
                 
                 transacciones.forEach(function(t) {
                     total += Number(t.valor);
-                    htmlStr += `<tr>
-                        <td data-label="Concepto"><div style='font-weight:600'>${t.concepto}</div></td>
-                        <td data-label="Fecha">${formatDate(t.fecha)}</td>
-                        <td data-label="Método">${t.metodo_pago || 'Transferencia'}</td>
-                        <td data-label="Monto" style="color:var(--primary); font-weight:600;">${formatCOP(t.valor)}</td>
-                        <td><button class='icon-btn'><i class='ph ph-dots-three'></i></button></td>
-                    </tr>`;
+                    htmlStr += `<div class="crm-card">
+                        <div class="crm-card-header">
+                            <div>
+                                <div class="crm-card-title">${t.concepto}</div>
+                                <div class="crm-card-subtitle"><i class="ph ph-calendar"></i> ${formatDate(t.fecha)}</div>
+                            </div>
+                            <button class='icon-btn'><i class='ph ph-dots-three'></i></button>
+                        </div>
+                        <div class="crm-card-footer" style="background-color: transparent; border-top: none; padding-top: 0;">
+                            <div class="crm-detail-item">
+                                <div class="crm-detail-label">Método</div>
+                                <div class="crm-detail-value">${t.metodo_pago || 'Transferencia'}</div>
+                            </div>
+                            <div class="crm-detail-item" style="text-align:right;">
+                                <div class="crm-detail-label">Monto</div>
+                                <div class="crm-detail-value" style="color:var(--primary); font-weight:700;">+ ${formatCOP(t.valor)}</div>
+                            </div>
+                        </div>
+                    </div>`;
                 });
                 tableBody.innerHTML = htmlStr;
                 const totalEl = document.getElementById('ingresos-total-kpi');
@@ -451,12 +491,7 @@ function IngresosView() {
                     <h3>Historial de Ingresos</h3>
                     <div id="ingresos-total-kpi" style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">$0</div>
                 </div>
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>Concepto</th><th>Fecha</th><th>Método</th><th>Monto</th><th></th></tr></thead>
-                        <tbody id="ingresos-tbody"></tbody>
-                    </table>
-                </div>
+                <div id="ingresos-tbody" class="modern-list-container"></div>
             </div>
             
             <!-- Derecha: Formulario Nuevo Ingreso -->
@@ -514,20 +549,32 @@ function GastosView() {
                 let total = 0;
                 
                 if(transacciones.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center">No hay gastos registrados.</td></tr>`;
+                    tableBody.innerHTML = `<div style="text-align:center; padding: 24px; color: var(--text-secondary);">No hay gastos registrados.</div>`;
                     document.getElementById('gastos-total-kpi').textContent = '$0';
                     return;
                 }
                 
                 transacciones.forEach(function(t) {
                     total += Number(t.valor);
-                    htmlStr += `<tr>
-                        <td data-label="Concepto"><div style='font-weight:600'>${t.concepto}</div><div style="font-size:0.8rem; color:var(--text-secondary)">${t.categoria}</div></td>
-                        <td data-label="Fecha">${formatDate(t.fecha)}</td>
-                        <td data-label="Método">${t.metodo_pago || 'Efectivo'}</td>
-                        <td data-label="Monto" style="color:var(--danger); font-weight:600;">${formatCOP(t.valor)}</td>
-                        <td><button class='icon-btn'><i class='ph ph-dots-three'></i></button></td>
-                    </tr>`;
+                    htmlStr += `<div class="crm-card">
+                        <div class="crm-card-header">
+                            <div>
+                                <div class="crm-card-title">${t.concepto}</div>
+                                <div class="crm-card-subtitle"><i class="ph ph-calendar"></i> ${formatDate(t.fecha)} &nbsp;|&nbsp; ${t.categoria}</div>
+                            </div>
+                            <button class='icon-btn'><i class='ph ph-dots-three'></i></button>
+                        </div>
+                        <div class="crm-card-footer" style="background-color: transparent; border-top: none; padding-top: 0;">
+                            <div class="crm-detail-item">
+                                <div class="crm-detail-label">Método</div>
+                                <div class="crm-detail-value">${t.metodo_pago || 'Efectivo'}</div>
+                            </div>
+                            <div class="crm-detail-item" style="text-align:right;">
+                                <div class="crm-detail-label">Monto</div>
+                                <div class="crm-detail-value" style="color:var(--danger); font-weight:700;">- ${formatCOP(t.valor)}</div>
+                            </div>
+                        </div>
+                    </div>`;
                 });
                 tableBody.innerHTML = htmlStr;
                 const totalEl = document.getElementById('gastos-total-kpi');
@@ -575,12 +622,7 @@ function GastosView() {
                     <h3>Historial de Egresos</h3>
                     <div id="gastos-total-kpi" style="font-size: 1.5rem; font-weight: 700; color: var(--danger);">$0</div>
                 </div>
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>Concepto</th><th>Fecha</th><th>Método</th><th>Monto</th><th></th></tr></thead>
-                        <tbody id="gastos-tbody"></tbody>
-                    </table>
-                </div>
+                <div id="gastos-tbody" class="modern-list-container"></div>
             </div>
             
             <!-- Derecha: Formulario Nuevo Gasto -->
