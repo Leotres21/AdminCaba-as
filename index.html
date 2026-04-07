@@ -110,12 +110,13 @@
 
     <!-- Main Script (Bundled para evitar CORS en file://) -->
     <script>
+(function() {
 // ==========================================
 // 1. UTILIDADES
 // ==========================================
 const formatCOP = (value) => {
     const numberValue = Number(value);
-    if (isNaN(numberValue)) return '<script src="./js/app.bundle.js"></script>';
+    if (isNaN(numberValue)) return '$0';
     return new Intl.NumberFormat('es-CO', {
         style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0
     }).format(numberValue);
@@ -159,18 +160,105 @@ const createReserva = async (reservaData) => {
     } catch (error) { console.error(error); throw error; }
 };
 
+const getFinanzasTotales = async () => {
+    try {
+        const { data, error } = await supabase.from('finanzas').select('*');
+        if (error) throw error;
+        let ingresos = 0; let gastos = 0;
+        data.forEach(item => {
+            if(item.tipo === 'ingreso') ingresos += Number(item.valor);
+            if(item.tipo === 'gasto') gastos += Number(item.valor);
+        });
+        return { ingresos, gastos, utilidad: ingresos - gastos, raw: data };
+    } catch (error) { console.error(error); return { ingresos: 0, gastos: 0, utilidad: 0, raw: [] }; }
+};
+
+const getTransacciones = async (tipo) => {
+    try {
+        // Query base
+        let query = supabase.from('finanzas').select('*').order('fecha', { ascending: false });
+        if(tipo) {
+            query = query.eq('tipo', tipo);
+        }
+        const { data, error } = await query;
+        if (error) throw error;
+        return data;
+    } catch (error) { console.error(error); return []; }
+};
+
+const createTransaccion = async (transaccionData) => {
+    try {
+        const { data, error } = await supabase.from('finanzas').insert([transaccionData]).select();
+        if (error) throw error;
+        return data[0];
+    } catch (error) { console.error(error); throw error; }
+};
+
 // ==========================================
 // 4. VISTAS (Views)
 // ==========================================
 function DashboardView() {
-    return "<div class='dashboard-container' style='display:flex; flex-direction:column; gap:24px;'>" +
-           "  <div class='grid-cols-4'>" +
-           "    <div class='card'><div style='color: var(--text-secondary); font-size: 0.875rem;'>Reservas de Hoy</div><div style='font-size: 1.75rem; font-weight: 700; margin-top: 8px;'>3</div></div>" +
-           "    <div class='card'><div style='color: var(--text-secondary); font-size: 0.875rem;'>Ingresos del Mes</div><div style='font-size: 1.75rem; font-weight: 700; margin-top: 8px; color: var(--primary)'>$4.250</div></div>" +
-           "    <div class='card'><div style='color: var(--text-secondary); font-size: 0.875rem;'>Gastos del Mes</div><div style='font-size: 1.75rem; font-weight: 700; margin-top: 8px; color: var(--danger)'>$1.150</div></div>" +
-           "    <div class='card'><div style='color: var(--text-secondary); font-size: 0.875rem;'>Ocupación</div><div style='font-size: 1.75rem; font-weight: 700; margin-top: 8px; color: var(--warning)'>85%</div></div>" +
-           "  </div>" +
-           "</div>";
+    setTimeout(async function() {
+        try {
+            const numReservasStr = document.getElementById('dash-kpi-reservas');
+            const incIngresosStr = document.getElementById('dash-kpi-ingresos');
+            const incGastosStr = document.getElementById('dash-kpi-gastos');
+            const incUtilidadStr = document.getElementById('dash-kpi-utilidad');
+            
+            // Fetch reservas count
+            const reservas = await getReservas();
+            if(numReservasStr) numReservasStr.textContent = reservas.length;
+
+            // Fetch finanzas
+            const finanzas = await getFinanzasTotales();
+            if(incIngresosStr) incIngresosStr.textContent = formatCOP(finanzas.ingresos);
+            if(incGastosStr) incGastosStr.textContent = formatCOP(finanzas.gastos);
+            if(incUtilidadStr) incUtilidadStr.textContent = formatCOP(finanzas.utilidad);
+
+            // Fetch Chart
+            const ctx = document.getElementById('revenueChart');
+            if (ctx && window.Chart) {
+                // Generar chart básico estático mientras implementamos lógicas por mes real
+                new window.Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Actual'],
+                        datasets: [
+                            { label: 'Ingresos', data: [finanzas.ingresos], backgroundColor: '#10B981', borderRadius: 4 },
+                            { label: 'Gastos', data: [finanzas.gastos], backgroundColor: '#EF4444', borderRadius: 4 }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+                });
+            }
+        } catch(e) {
+            console.error("Error cargando dashboard:", e);
+        }
+    }, 50);
+
+    return `
+        <div class="dashboard-container" style="display:flex; flex-direction:column; gap:24px;">
+            <div class="grid-cols-4">
+                <div class="card"><div style="color: var(--text-secondary); font-size: 0.875rem;">Reservas Totales</div><div id="dash-kpi-reservas" style="font-size: 1.75rem; font-weight: 700; margin-top: 8px;">...</div></div>
+                <div class="card"><div style="color: var(--text-secondary); font-size: 0.875rem;">Ingresos Registrados</div><div id="dash-kpi-ingresos" style="font-size: 1.75rem; font-weight: 700; margin-top: 8px; color: var(--primary)">...</div></div>
+                <div class="card"><div style="color: var(--text-secondary); font-size: 0.875rem;">Gastos Mantenimiento</div><div id="dash-kpi-gastos" style="font-size: 1.75rem; font-weight: 700; margin-top: 8px; color: var(--danger)">...</div></div>
+                <div class="card"><div style="color: var(--text-secondary); font-size: 0.875rem;">Utilidad Neta</div><div id="dash-kpi-utilidad" style="font-size: 1.75rem; font-weight: 700; margin-top: 8px; color: var(--warning)">...</div></div>
+            </div>
+            <div class="grid-cols-3" style="grid-template-columns: 2fr 1fr;">
+                <div class="card" style="height: 400px; display:flex; flex-direction:column;">
+                    <h3 style="margin-bottom: 24px;">Balance Financiero</h3>
+                    <div style="flex:1; position:relative;"><canvas id="revenueChart"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom: 24px;">Tip de Crecimiento</h3>
+                    <div style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
+                        <img src="https://images.unsplash.com/photo-1550096141-726e6f98c8c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" style="width:100%; height:120px; object-fit:cover; border-radius:8px; margin-bottom:16px;">
+                        Para mantener sana tu relación de gastos vs ingresos, intenta que los costos operativos de la Cabaña (Aseo y Servicios) no superen el 20% del total de tus ingresos en la temporada alta. 
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 function ReservasView() {
@@ -284,8 +372,253 @@ function ReservasView() {
 
 function CalendarioView() { return "<div class='card'><h3>Calendario</h3><p>Módulo en desarrollo.</p></div>"; }
 function FinanzasView() { return "<div class='card'><h3>Finanzas</h3><p>Módulo en desarrollo.</p></div>"; }
-function IngresosView() { return "<div class='card'><h3>Ingresos</h3><p>Módulo en desarrollo.</p></div>"; }
-function GastosView() { return "<div class='card'><h3>Gastos</h3><p>Módulo en desarrollo.</p></div>"; }
+function IngresosView() {
+    setTimeout(function() {
+        async function loadIngresos() {
+            const tableBody = document.getElementById('ingresos-tbody');
+            if(!tableBody) return;
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center">Cargando ingresos...</td></tr>`;
+            try {
+                const transacciones = await getTransacciones('ingreso');
+                let htmlStr = '';
+                let total = 0;
+                
+                if(transacciones.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center">No hay ingresos registrados.</td></tr>`;
+                    document.getElementById('ingresos-total-kpi').textContent = '$0';
+                    return;
+                }
+                
+                transacciones.forEach(function(t) {
+                    total += Number(t.valor);
+                    htmlStr += `<tr>
+                        <td><div style='font-weight:600'>${t.concepto}</div></td>
+                        <td>${formatDate(t.fecha)}</td>
+                        <td>${t.metodo_pago || 'Transferencia'}</td>
+                        <td style="color:var(--primary); font-weight:600;">${formatCOP(t.valor)}</td>
+                        <td><button class='icon-btn'><i class='ph ph-dots-three'></i></button></td>
+                    </tr>`;
+                });
+                tableBody.innerHTML = htmlStr;
+                const totalEl = document.getElementById('ingresos-total-kpi');
+                if(totalEl) totalEl.textContent = formatCOP(total);
+            } catch (error) { 
+                tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red">Error: ${error.message}</td></tr>`; 
+            }
+        }
+        loadIngresos();
+
+        const formNuevo = document.getElementById('form-nuevo-ingreso');
+        if(formNuevo) {
+            formNuevo.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(formNuevo);
+                const data = {
+                    tipo: 'ingreso',
+                    concepto: formData.get('concepto'),
+                    categoria: formData.get('categoria'),
+                    valor: parseFloat(formData.get('valor')),
+                    metodo_pago: formData.get('metodo'),
+                    fecha: formData.get('fecha')
+                };
+                
+                const btnSubmit = formNuevo.querySelector('button[type="submit"]');
+                const originalText = btnSubmit.innerHTML; 
+                btnSubmit.innerHTML = 'Guardando...'; btnSubmit.disabled = true;
+
+                try {
+                    await createTransaccion(data);
+                    alert("Ingreso registrado en Supabase.");
+                    formNuevo.reset();
+                    loadIngresos();
+                } catch (error) { alert(`Error al registrar el ingreso: ${error.message}`); } 
+                finally { btnSubmit.innerHTML = originalText; btnSubmit.disabled = false; }
+            });
+        }
+    }, 50);
+
+    return `
+        <div class="grid-cols-3" style="grid-template-columns: 2fr 1fr;">
+            <!-- Izquierda: Lista de Ingresos -->
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+                    <h3>Historial de Ingresos</h3>
+                    <div id="ingresos-total-kpi" style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">$0</div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Concepto</th><th>Fecha</th><th>Método</th><th>Monto</th><th></th></tr></thead>
+                        <tbody id="ingresos-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Derecha: Formulario Nuevo Ingreso -->
+            <div class="card" style="height: fit-content;">
+                <h3>Registrar Ingreso Adicional</h3>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 24px;">Las reservas se registran automáticamente aquí si configuras el trigger en DB. Usa este panel para ingresos extra.</p>
+                
+                <form id="form-nuevo-ingreso" style="display:flex; flex-direction:column; gap:16px;">
+                    <div class="input-group">
+                        <label>Concepto (Ej. Consumo Minibar)</label>
+                        <input type="text" name="concepto" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Categoría</label>
+                        <select name="categoria">
+                            <option value="reserva">Reserva (Directa)</option>
+                            <option value="minibar">Consumo Minibar</option>
+                            <option value="tour">Tour Adicional</option>
+                            <option value="otro">Otro Ingreso</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Valor (COP)</label>
+                        <input type="number" name="valor" required>
+                    </div>
+                    <div class="grid-cols-2">
+                        <div class="input-group">
+                            <label>Método Reg.</label>
+                            <select name="metodo">
+                                <option value="Bancolombia">Bancolombia</option>
+                                <option value="Nequi">Nequi</option>
+                                <option value="Efectivo">Efectivo</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Fecha</label>
+                            <input type="date" name="fecha" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 8px;">Registrar Ingreso</button>
+                </form>
+            </div>
+        </div>
+    `;
+}
+function GastosView() {
+    setTimeout(function() {
+        async function loadGastos() {
+            const tableBody = document.getElementById('gastos-tbody');
+            if(!tableBody) return;
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center">Cargando gastos...</td></tr>`;
+            try {
+                const transacciones = await getTransacciones('gasto');
+                let htmlStr = '';
+                let total = 0;
+                
+                if(transacciones.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center">No hay gastos registrados.</td></tr>`;
+                    document.getElementById('gastos-total-kpi').textContent = '$0';
+                    return;
+                }
+                
+                transacciones.forEach(function(t) {
+                    total += Number(t.valor);
+                    htmlStr += `<tr>
+                        <td><div style='font-weight:600'>${t.concepto}</div><div style="font-size:0.8rem; color:var(--text-secondary)">${t.categoria}</div></td>
+                        <td>${formatDate(t.fecha)}</td>
+                        <td>${t.metodo_pago || 'Efectivo'}</td>
+                        <td style="color:var(--danger); font-weight:600;">${formatCOP(t.valor)}</td>
+                        <td><button class='icon-btn'><i class='ph ph-dots-three'></i></button></td>
+                    </tr>`;
+                });
+                tableBody.innerHTML = htmlStr;
+                const totalEl = document.getElementById('gastos-total-kpi');
+                if(totalEl) totalEl.textContent = formatCOP(total);
+            } catch (error) { 
+                tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red">Error: ${error.message}</td></tr>`; 
+            }
+        }
+        loadGastos();
+
+        const formNuevo = document.getElementById('form-nuevo-gasto');
+        if(formNuevo) {
+            formNuevo.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(formNuevo);
+                const data = {
+                    tipo: 'gasto',
+                    concepto: formData.get('concepto'),
+                    categoria: formData.get('categoria'),
+                    valor: parseFloat(formData.get('valor')),
+                    metodo_pago: formData.get('metodo'),
+                    fecha: formData.get('fecha')
+                };
+                
+                const btnSubmit = formNuevo.querySelector('button[type="submit"]');
+                const originalText = btnSubmit.innerHTML; 
+                btnSubmit.innerHTML = 'Guardando...'; btnSubmit.disabled = true;
+
+                try {
+                    await createTransaccion(data);
+                    alert("Gasto registrado en Supabase.");
+                    formNuevo.reset();
+                    loadGastos();
+                } catch (error) { alert(`Error al registrar el gasto: ${error.message}`); } 
+                finally { btnSubmit.innerHTML = originalText; btnSubmit.disabled = false; }
+            });
+        }
+    }, 50);
+
+    return `
+        <div class="grid-cols-3" style="grid-template-columns: 2fr 1fr;">
+            <!-- Izquierda: Lista de Gastos -->
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+                    <h3>Historial de Egresos</h3>
+                    <div id="gastos-total-kpi" style="font-size: 1.5rem; font-weight: 700; color: var(--danger);">$0</div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Concepto</th><th>Fecha</th><th>Método</th><th>Monto</th><th></th></tr></thead>
+                        <tbody id="gastos-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Derecha: Formulario Nuevo Gasto -->
+            <div class="card" style="height: fit-content;">
+                <h3>Registrar Gasto Mantenimiento/Operativo</h3>
+                
+                <form id="form-nuevo-gasto" style="display:flex; flex-direction:column; gap:16px; margin-top:24px;">
+                    <div class="input-group">
+                        <label>Concepto (Ej. Compra de Insumos)</label>
+                        <input type="text" name="concepto" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Categoría</label>
+                        <select name="categoria">
+                            <option value="mantenimiento">Mantenimiento y Reparaciones</option>
+                            <option value="insumos">Limpieza / Insumos Aseo</option>
+                            <option value="servicios">Servicios Públicos</option>
+                            <option value="nomina">Nómina / Pagos Empleados</option>
+                            <option value="otro">Otro Gasto</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Valor (COP)</label>
+                        <input type="number" name="valor" required>
+                    </div>
+                    <div class="grid-cols-2">
+                        <div class="input-group">
+                            <label>Pagado Vía</label>
+                            <select name="metodo">
+                                <option value="Efectivo">Caja Menor / Efectivo</option>
+                                <option value="Bancolombia">Banco</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Fecha del Gasto</label>
+                            <input type="date" name="fecha" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top: 8px; background-color: var(--danger);">Registrar Egreso</button>
+                </form>
+            </div>
+        </div>
+    `;
+}
 function PagosView() { return "<div class='card'><h3>Pagos</h3><p>Módulo en desarrollo.</p></div>"; }
 function MantenimientoView() { return "<div class='card'><h3>Mantenimiento</h3><p>Módulo en desarrollo.</p></div>"; }
 function AjustesView() { return "<div class='card'><h3>Ajustes</h3><p>Módulo en desarrollo.</p></div>"; }
@@ -333,6 +666,7 @@ document.addEventListener('DOMContentLoaded', function() {
     else navigateTo(window.location.hash.replace('#', ''));
 });
 
+})();
 </script>
 </body>
 </html>
