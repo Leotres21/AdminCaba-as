@@ -352,7 +352,16 @@ function ReservasView() {
                 
                 // Preparar Contenedor según modo
                 if(currentViewMode === 'list') {
-                    htmlStr += "<div class='table-container'><table><thead><tr><th>Nombre Cliente</th><th>Fechas</th><th># Personas</th><th>Estado</th><th>Total</th><th>Saldo</th><th>Acción</th></tr></thead><tbody>";
+                    htmlStr += `<div class='dense-list-header hidden-mobile'>
+                            <div>Huésped</div>
+                            <div>Fechas</div>
+                            <div>Paxs</div>
+                            <div style='text-align:center;'>Estado</div>
+                            <div style='text-align:right;'>Total</div>
+                            <div style='text-align:right;'>Saldo</div>
+                            <div style='text-align:center;'>Ver</div>
+                        </div>
+                        <div class='dense-list-body'>`;
                 } else {
                     htmlStr += "<div class='modern-list-container'>";
                 }
@@ -360,17 +369,32 @@ function ReservasView() {
                 reservas.forEach(function(res) {
                     const saldo = calcSaldo(res.precio_total, res.anticipo);
                     const bc = res.estado === 'confirmado' ? 'success' : res.estado === 'pendiente' ? 'warning' : 'danger';
-                    const telHtml = res.telefono_cliente ? "<div style='font-size:0.8rem; color:var(--text-secondary)'>" + res.telefono_cliente + "</div>" : "";
-                    const saldoColor = saldo > 0 ? "color:var(--danger); font-weight:600" : "color:var(--text-secondary)";
+                    const telHtml = res.telefono_cliente ? `<div class='dense-subtext'><i class='ph ph-phone'></i> ${res.telefono_cliente}</div>` : "";
+                    const saldoColor = saldo > 0 ? "color:var(--danger);" : "color:var(--text-secondary);";
                     
                     if(currentViewMode === 'list') {
-                        htmlStr += "<tr>" +
-                            "<td><div style='font-weight:600'>" + res.nombre_cliente + "</div>" + telHtml + "</td>" +
-                            "<td><div>In: " + formatDate(res.fecha_entrada) + "</div><div style='font-size:0.8rem; color:var(--text-secondary)'>Out: " + formatDate(res.fecha_salida) + "</div></td>" +
-                            "<td>" + res.numero_personas + "</td><td><span class='badge " + bc + "'>" + res.estado + "</span></td>" +
-                            "<td>" + formatCOP(res.precio_total) + "</td><td><span style='" + saldoColor + "'>" + formatCOP(saldo) + "</span></td>" +
-                            "<td><button class='icon-btn'><i class='ph ph-eye'></i></button></td>" +
-                        "</tr>";
+                        htmlStr += `<div class='dense-row'>
+                            <div class='d-col-info'><span class='dense-user-name'>${res.nombre_cliente}</span>${telHtml}</div>
+                            <div class='d-col-fechas'>
+                                <div style='font-size:0.85rem'><b>In:</b> ${formatDate(res.fecha_entrada)}</div>
+                                <div style='font-size:0.85rem; color:var(--text-secondary)'><b>Out:</b> ${formatDate(res.fecha_salida)}</div>
+                            </div>
+                            <div class='d-col-personas' style='font-size:0.85rem'><i class='ph ph-users'></i> ${res.numero_personas}</div>
+                            <div class='d-col-badge' style='text-align:center;'><span class='dense-badge ${bc}'>${res.estado}</span></div>
+                            <div class='hidden-mobile' style='text-align:right; font-weight:600;'>${formatCOP(res.precio_total)}</div>
+                            <div class='d-col-saldos'>
+                                <div class='hidden-mobile' style='display:none'></div> <!-- Mantiene Grid Móvil equilibrado -->
+                                <div class='mobile-only' style='display:none'>
+                                    <div class='d-saldo-label'>Total</div>
+                                    <div class='d-saldo-value' style='font-size:0.85rem;'>${formatCOP(res.precio_total)}</div>
+                                </div>
+                                <div style='text-align:right;'>
+                                    <div class='d-saldo-label mobile-only' style='display:none'>Saldo Pendiente</div>
+                                    <div class='d-saldo-value' style='${saldoColor}'>${formatCOP(saldo)}</div>
+                                </div>
+                            </div>
+                            <div class='d-col-acciones' style='text-align:center;'><button class='icon-btn' style='background:var(--bg-main)'><i class='ph ph-caret-right'></i></button></div>
+                        </div>`;
                     } else {
                         htmlStr += "<div class='crm-card'>" +
                             "<div class='crm-card-header'>" +
@@ -492,27 +516,34 @@ function ReservasView() {
            "    <button class='tab-btn' data-target='tab-nueva'>Nueva Reserva</button>" +
            "  </div>" +
            "  <div id='tab-lista' class='tab-content active-content'>" +
-           "    <div class='filter-bar'>" +
-           "        <div style='display:flex; gap: 8px;'>" +
-           "            <button class='btn btn-primary' onclick=\"document.querySelector('.tab-btn[data-target=\\'tab-nueva\\']').click()\"><i class='ph ph-plus'></i> Nueva Reserva</button>" +
-           "            <button id='export-reservas-res' class='btn' style='background:#F3F4F6; color:var(--text-primary);'><i class='ph ph-file-csv'></i> Exportar Excel</button>" +
+           "    <div class='filter-bar' style='display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center; margin-bottom:24px;'>" +
+           "        <div style='display:flex; gap: 8px; flex: 1; min-width: 250px;'>" +
+           "            <button class='btn btn-primary' style='flex:1; justify-content:center;' onclick=\"document.querySelector('.tab-btn[data-target=\\'tab-nueva\\']').click()\"><i class='ph ph-plus'></i> Nueva Reserva</button>" +
+           "            <button id='export-reservas-res' class='btn' style='background:#F3F4F6; color:var(--text-primary);'><i class='ph ph-file-csv'></i> Excel</button>" +
            "        </div>" +
-           "        <div class='view-toggler'><button id='toggle-list-res' class='icon-btn' aria-label='Vista de Lista'><i class='ph ph-list-dashes'></i></button><button id='toggle-card-res' class='icon-btn' aria-label='Vista de Tarjetas'><i class='ph ph-squares-four'></i></button></div>" +
+           "        <div class='view-toggler' style='display:flex; gap: 4px; background: var(--bg-main); padding: 4px; border-radius: var(--border-radius); border: 1px solid var(--border-color);'><button id='toggle-list-res' class='icon-btn' aria-label='Vista de Lista'><i class='ph ph-list-dashes'></i></button><button id='toggle-card-res' class='icon-btn' aria-label='Vista de Tarjetas'><i class='ph ph-squares-four'></i></button></div>" +
            "    </div>" +
            "    <div id='reservas-view-container'></div>" +
            "  </div>" +
            "  <div id='tab-nueva' class='tab-content'>" +
-           "    <h3>Crear Nueva Reserva</h3>" +
-           "    <form id='form-nueva-reserva'><div class='grid-cols-2' style='margin-bottom: 24px;'>" +
-           "      <div class='input-group'><label>Nombre del Cliente</label><input type='text' name='nombre' required></div>" +
-           "      <div class='input-group'><label>Teléfono</label><input type='text' name='telefono' required></div>" +
-           "      <div class='input-group'><label>Fecha Entrada</label><input type='date' name='fecha_in' required></div>" +
-           "      <div class='input-group'><label>Fecha Salida</label><input type='date' name='fecha_out' required></div>" +
-           "      <div class='input-group'><label># Personas</label><input type='number' name='personas' value='2' required></div>" +
-           "      <div class='input-group'><label>Origen</label><select name='origen'><option>Directo</option></select></div>" +
-           "      <div class='input-group'><label>Precio Total</label><input type='number' name='precio' required></div>" +
-           "      <div class='input-group'><label>Anticipo</label><input type='number' name='anticipo' value='0' required></div>" +
-           "    </div><button type='submit' class='btn btn-primary'>Guardar Reserva</button></form>" +
+           "    <h3 style='margin-bottom: 24px;'>Crear Nueva Reserva</h3>" +
+           "    <form id='form-nueva-reserva'>" +
+           "      <div class='input-group' style='margin-bottom: 16px;'><label>Nombre Completo del Huésped</label><input type='text' name='nombre' required placeholder='Ej. Juan Pérez'></div>" +
+           "      <div class='input-group' style='margin-bottom: 16px;'><label>Teléfono / WhatsApp</label><input type='text' name='telefono' required placeholder='+57 XXXXXXXX'></div>" +
+           "      <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;'>" +
+           "        <div class='input-group'><label>Entrada (Check-in)</label><input type='date' name='fecha_in' required></div>" +
+           "        <div class='input-group'><label>Salida (Check-out)</label><input type='date' name='fecha_out' required></div>" +
+           "      </div>" +
+           "      <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;'>" +
+           "        <div class='input-group'><label>Personas (Pax)</label><input type='number' name='personas' value='2' required min='1'></div>" +
+           "        <div class='input-group'><label>Origen</label><select name='origen'><option>Directo</option><option>Booking</option><option>Airbnb</option></select></div>" +
+           "      </div>" +
+           "      <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 32px; padding: 16px; background: var(--bg-main); border-radius: 8px; border: 1px dashed var(--border-color);'>" +
+           "        <div class='input-group'><label>Precio Total (COP)</label><input type='number' name='precio' required placeholder='0'></div>" +
+           "        <div class='input-group'><label>Anticipo (COP)</label><input type='number' name='anticipo' value='0' required></div>" +
+           "      </div>" +
+           "      <button type='submit' class='btn btn-primary' style='width:100%; padding: 14px; font-size: 1.1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(16,185,129,0.3);'>Guardar Reserva</button>" +
+           "    </form>" +
            "  </div>" +
            "</div>";
 }
