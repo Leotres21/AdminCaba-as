@@ -586,3 +586,109 @@ tbody tr:hover {
     .mobile-menu-btn { display: none; }
     .sidebar-overlay { display: none; }
 }
+/* ==========================================================================
+   Módulo de Calendario (Senior UX)
+   ========================================================================== */
+.calendar-container {
+    background-color: var(--bg-surface);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--shadow-md);
+}
+
+.calendar-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.calendar-month-year {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-transform: capitalize;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+}
+
+.calendar-day-label {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding-bottom: 12px;
+    text-transform: uppercase;
+}
+
+.calendar-day {
+    aspect-ratio: 1 / 1;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 6px;
+    font-size: 0.875rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-end;
+    transition: background-color 0.2s;
+}
+
+.calendar-day:not(.empty):hover {
+    background-color: #F3F4F6;
+    cursor: pointer;
+}
+
+.calendar-day.empty {
+    border: none;
+    background-color: transparent;
+}
+
+.calendar-day.today {
+    border: 2px solid var(--primary);
+    font-weight: 700;
+}
+
+.calendar-day.occupied {
+    background-color: #FEF2F2;
+    border-color: #FEE2E2;
+}
+
+.calendar-day.occupied .occ-indicator {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    right: 6px;
+    height: 6px;
+    border-radius: 10px;
+    background-color: var(--danger);
+}
+
+.calendar-day.occupied .guest-initial {
+    font-size: 0.65rem;
+    color: var(--danger);
+    font-weight: 600;
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    max-width: 80%;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .calendar-container { padding: 16px; }
+    .calendar-grid { gap: 4px; }
+    .calendar-day { padding: 4px; font-size: 0.75rem; }
+}
+
+/* PWA UI Fix - Area segura para muescas de celular (Notch) */
+body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+}

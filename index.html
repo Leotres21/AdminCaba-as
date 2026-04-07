@@ -120,6 +120,7 @@
 // ==========================================
 // 1. UTILIDADES
 // ==========================================
+let currentCalDate = new Date(); // Estado global del visor de calendario
 const formatCOP = (value) => {
     const numberValue = Number(value);
     if (isNaN(numberValue)) return '$0';
@@ -453,7 +454,102 @@ function ReservasView() {
            "</div>";
 }
 
-function CalendarioView() { return "<div class='card'><h3>Calendario</h3><p>Módulo en desarrollo.</p></div>"; }
+function CalendarioView() {
+    setTimeout(function() {
+        const calendarGrid = document.getElementById('calendar-days-grid');
+        const monthLabel = document.getElementById('calendar-month-label');
+        if(!calendarGrid || !monthLabel) return;
+
+        async function renderCalendar() {
+            calendarGrid.innerHTML = ''; // Limpiar cuadrícula
+            const year = currentCalDate.getFullYear();
+            const month = currentCalDate.getMonth();
+            
+            // Nombre del mes en español
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            monthLabel.textContent = monthNames[month] + " " + year;
+
+            // Días del mes anterior para el espaciado
+            const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Dom) - 6 (Sab)
+            // Ajustar a Lunes inicio (1:Lun, ..., 0:Dom -> 6)
+            const adjustedOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            // 1. Agregar espacios vacíos
+            for (let i = 0; i < adjustedOffset; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day empty';
+                calendarGrid.appendChild(emptyDay);
+            }
+
+            // 2. Fetch Reservas para este mes
+            let reservas = [];
+            try {
+                reservas = await getReservas();
+            } catch(e) { console.error("Error cargando reservas para calendario:", e); }
+
+            // 3. Generar días con lógica de ocupación
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                dayEl.textContent = day;
+
+                const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const todayStr = new Date().toISOString().split('T')[0];
+                if(currentDateStr === todayStr) dayEl.classList.add('today');
+
+                // Lógica de Ocupación: Verificar si el día actual está dentro de alguna reserva
+                const reservaEncontrada = reservas.find(res => {
+                    const inDate = new Date(res.fecha_entrada).toISOString().split('T')[0];
+                    const outDate = new Date(res.fecha_salida).toISOString().split('T')[0];
+                    return currentDateStr >= inDate && currentDateStr <= outDate;
+                });
+
+                if (reservaEncontrada) {
+                    dayEl.classList.add('occupied');
+                    dayEl.innerHTML = `<span>${day}</span><div class='guest-initial' title='${reservaEncontrada.nombre_cliente}'>${reservaEncontrada.nombre_cliente.substring(0, 10)}</div><div class='occ-indicator'></div>`;
+                }
+
+                calendarGrid.appendChild(dayEl);
+            }
+        }
+
+        // Navegación
+        document.getElementById('prev-month').addEventListener('click', () => {
+            currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+            renderCalendar();
+        });
+        document.getElementById('next-month').addEventListener('click', () => {
+            currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        renderCalendar();
+    }, 50);
+
+    return `
+        <div class="calendar-container">
+            <div class="calendar-nav">
+                <button id="prev-month" class="icon-btn" style="background:#F3F4F6"><i class="ph ph-caret-left"></i></button>
+                <div id="calendar-month-label" class="calendar-month-year">...</div>
+                <button id="next-month" class="icon-btn" style="background:#F3F4F6"><i class="ph ph-caret-right"></i></button>
+            </div>
+            <div class="calendar-grid">
+                <div class="calendar-day-label">Lun</div>
+                <div class="calendar-day-label">Mar</div>
+                <div class="calendar-day-label">Mié</div>
+                <div class="calendar-day-label">Jue</div>
+                <div class="calendar-day-label">Vie</div>
+                <div class="calendar-day-label">Sáb</div>
+                <div class="calendar-day-label">Dom</div>
+            </div>
+            <div id="calendar-days-grid" class="calendar-grid">
+                <!-- Días inyectados por JS -->
+            </div>
+        </div>
+    `;
+}
 function FinanzasView() { return "<div class='card'><h3>Finanzas</h3><p>Módulo en desarrollo.</p></div>"; }
 function IngresosView() {
     setTimeout(function() {
