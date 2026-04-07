@@ -18,6 +18,13 @@
     
     <!-- Main CSS -->
     <link rel="stylesheet" href="./css/styles.css">
+    
+    <!-- PWA Setup: Manifest & Mobile Experience -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#10B981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/619/619153.png">
 </head>
 <body>
     <script>
@@ -954,6 +961,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    // Registro de Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('✅ PWA: Service Worker Activado', reg))
+                .catch(err => console.log('❌ PWA: Error al activar Service Worker', err));
+        });
+    }
 });
 
 })();
