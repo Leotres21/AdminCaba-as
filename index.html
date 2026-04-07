@@ -350,16 +350,16 @@ function ReservasView() {
                 
                 let htmlStr = '';
                 
-                // Preparar Contenedor según modo
                 if(currentViewMode === 'list') {
-                    htmlStr += `<div class='dense-list-header hidden-mobile'>
+                    htmlStr += `<div class='table-responsive-container'>
+                        <div class='dense-list-header'>
                             <div>Huésped</div>
                             <div>Fechas</div>
-                            <div>Paxs</div>
+                            <div>Personas</div>
                             <div style='text-align:center;'>Estado</div>
                             <div style='text-align:right;'>Total</div>
                             <div style='text-align:right;'>Saldo</div>
-                            <div style='text-align:center;'>Ver</div>
+                            <div style='text-align:center;'>Acción</div>
                         </div>
                         <div class='dense-list-body'>`;
                 } else {
@@ -369,36 +369,24 @@ function ReservasView() {
                 reservas.forEach(function(res) {
                     const saldo = calcSaldo(res.precio_total, res.anticipo);
                     const bc = res.estado === 'confirmado' ? 'success' : res.estado === 'pendiente' ? 'warning' : 'danger';
-                    const telHtml = res.telefono_cliente ? `<div class='dense-subtext'>• ${res.telefono_cliente}</div>` : "";
+                    const telHtml = res.telefono_cliente ? `<div class='dense-subtext'><i class='ph ph-phone'></i> ${res.telefono_cliente}</div>` : "";
                     const saldoColor = saldo > 0 ? "color:var(--danger);" : "color:var(--text-secondary);";
                     
                     if(currentViewMode === 'list') {
                         htmlStr += `<div class='dense-row'>
                             <div class='d-col-info'>
-                                <div class='d-name-box'>
-                                    <span class='dense-user-name'><b>${res.nombre_cliente}</b></span>
-                                    ${telHtml}
-                                </div>
-                                <span class='dense-badge mobile-only ${bc}' style='display:none;'>${res.estado}</span>
+                                <span class='dense-user-name'>${res.nombre_cliente}</span>
+                                ${telHtml}
                             </div>
-                            
                             <div class='d-col-fechas'>
-                                <div class='d-fecha-in'>${formatDate(res.fecha_entrada)}</div>
-                                <div><i class="ph ph-arrow-right" style="color:var(--border-color)"></i></div>
-                                <div class='d-fecha-out'>${formatDate(res.fecha_salida)}</div>
+                                <div><span class='text-muted'>In:</span> ${formatDate(res.fecha_entrada)}</div>
+                                <div><span class='text-muted'>Out:</span> ${formatDate(res.fecha_salida)}</div>
                             </div>
-                            
                             <div class='d-col-personas'><i class='ph ph-users'></i> ${res.numero_personas}</div>
-                            <div class='d-col-badge hidden-mobile'><span class='dense-badge ${bc}'>${res.estado}</span></div>
-                            <div class='d-col-total hidden-mobile'>${formatCOP(res.precio_total)}</div>
-                            
-                            <div class='d-col-saldos'>
-                                <div class='d-saldo-meta mobile-only' style='display:none;'><div class='d-total-val'>${formatCOP(res.precio_total)}</div></div>
-                                <div class='d-saldo-main'>
-                                    <div class='d-saldo-val' style='${saldoColor}'>${formatCOP(saldo)}</div>
-                                </div>
-                            </div>
-                            <div class='d-col-acciones hidden-mobile'></div>
+                            <div class='d-col-badge' style='text-align:center;'><span class='dense-badge ${bc}'>${res.estado}</span></div>
+                            <div class='d-col-total' style='text-align:right; font-weight:600;'>${formatCOP(res.precio_total)}</div>
+                            <div class='d-col-saldos' style='text-align:right; font-weight:700; ${saldoColor}'>${formatCOP(saldo)}</div>
+                            <div class='d-col-acciones' style='text-align:center;'><button class='icon-btn' style='background:var(--bg-main)'><i class='ph ph-caret-right'></i></button></div>
                         </div>`;
                     } else {
                         htmlStr += "<div class='crm-card'>" +
@@ -440,9 +428,12 @@ function ReservasView() {
                     }
                 });
                 
-                if(currentViewMode === 'list') htmlStr += "</tbody></table></div>";
-                else htmlStr += "</div>";
-
+                if(currentViewMode === 'list') {
+                    htmlStr += "</div></div>"; // Cerrar .dense-list-body y .table-responsive-container
+                } else {
+                    htmlStr += "</div>"; // Cerrar modern-list-container
+                }
+                
                 container.innerHTML = htmlStr;
             } catch (error) { 
                 container.innerHTML = '<div style="text-align:center; padding: 24px; color:red">Error al cargar listado: ' + error.message + '</div>'; 
