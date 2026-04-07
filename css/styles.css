@@ -339,3 +339,148 @@ th {
 tbody tr:hover {
     background-color: #F9FAFB;
 }
+
+/* ==========================================================================
+   Mobile-Native Architecture (App UX) - @media Queries
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* 1. Reset Global Spacing para ganar densidad */
+    .main-content {
+        padding: 16px; /* Reducción de 32px a 16px */
+    }
+
+    /* 2. Top App Bar (Header Pegajoso) */
+    .top-header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        padding: 0 16px; /* Espacio recudido */
+        height: 60px; /* Mas condensado */
+    }
+
+    #page-title { font-size: 1.25rem; }
+    
+    .user-profile {
+        /* Simplificar perfil de usuario ocultando el nombre en móviles */
+        padding: 4px; border: none; background: transparent; 
+    }
+    .user-name { display: none; }
+
+    /* 3. Off-Canvas Drawer (Menú Lateral Móvil) */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 80%; /* Ocupa el 80% de la pantalla */
+        max-width: 300px;
+        transform: translateX(-100%); /* Oculto por defecto */
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1100;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .sidebar.open {
+        transform: translateX(0); /* Visible cuando tiene la clase open */
+    }
+
+    /* Backdrop Oscuro */
+    .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 1050;
+    }
+
+    .sidebar-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Habilitar botón de Hamburguesa en el header */
+    .mobile-menu-btn {
+        display: flex;
+        font-size: 1.5rem;
+        color: var(--text-primary);
+        margin-right: 12px;
+    }
+
+    /* 4. Densidad y Grids de Apilamiento Vertical (Stacking) */
+    .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+        grid-template-columns: 1fr !important; /* Forzar 1 sola columna pura */
+        gap: 16px;
+    }
+
+    /* 5. Mutación Data Table a Tarjetas Verticales (Card-based Data Grids) */
+    table, thead, tbody, th, td, tr {
+        display: block;
+        width: 100%;
+    }
+
+    /* Esconder encabezado tradicional */
+    thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    /* Estructura de Fila a Tarjeta */
+    tbody tr {
+        margin-bottom: 16px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        background-color: var(--bg-surface);
+        padding: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    
+    tbody tr:hover { background-color: transparent; } /* Desactivar hover desktop */
+
+    /* Estructura de Celda */
+    td {
+        display: flex;
+        justify-content: space-between; /* Texto izquierda, Datos Derecha */
+        align-items: center;
+        border-bottom: 1px dashed var(--border-color);
+        padding: 8px 0;
+        text-align: right;
+    }
+
+    td:last-child {
+        border-bottom: 0;
+        justify-content: flex-end; /* Alinear acciones a la esquina */
+    }
+
+    /* Inyectar pseudo-elemento con el label de cada celda HTML */
+    td::before {
+        content: attr(data-label);
+        float: left;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+    }
+
+    /* 6. Tabs Scrollables para no quebrar UI */
+    .tabs-header {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 4px;
+        overscroll-behavior-x: contain;
+    }
+
+    /* 7. FAB Button Ajuste */
+    .fab {
+        bottom: env(safe-area-inset-bottom, 24px); 
+        right: 24px;
+    }
+}
+
+/* Ocultar botón de menú en Desktop */
+@media (min-width: 769px) {
+    .mobile-menu-btn { display: none; }
+    .sidebar-overlay { display: none; }
+}
